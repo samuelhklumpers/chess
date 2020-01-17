@@ -5,6 +5,7 @@ import tkinter as tk
 import numpy as np
 import itertools as itr
 
+from tkinter import font
 from pieces import *
 
 
@@ -156,12 +157,14 @@ class Board(tk.Canvas):
             tk.Canvas.__init__(self, master=master)
             self.bind("<Expose>", self.draw)
             self.bind("<Button-1>", self._click)
+            self.bind("<Configure>", self.resize)
         else:
             self.delete('all')
 
         self.client = client
 
         self.loaded = False
+        self.font = font.Font(family="Cambria", size=-80)
 
         self.pieces = {Piece.WHITE: [], Piece.BLACK: []}
         self.seen = {Piece.WHITE: set(), Piece.BLACK: set()}
@@ -175,6 +178,8 @@ class Board(tk.Canvas):
         self.selection = None
 
     def load(self, fn):
+        self.resize()
+
         constructors = {p.SHAPE: p for p in Piece.pieces}
 
         with open(fn) as f:
@@ -229,10 +234,18 @@ class Board(tk.Canvas):
 
         self.redraw()
 
+    def resize(self, event=None):
+
+        dx = self.winfo_width() / 8
+        dy = self.winfo_height() / 8
+
+        fontsize = -int(3 * min(dx, dy) / 4)
+        self.font.configure(size=fontsize)
+
     def create(self, p, x, y, colour=None):
         colour = p.colour if not colour else colour
 
-        return self.create_text(*self.screen_coord(x, y, True), anchor="w", font="Cambria", text=p.shape, fill=colour)
+        return self.create_text(*self.screen_coord(x, y, True), font=self.font, text=p.APPEARANCE, fill=colour)
 
     def set_state(self, colour, state):
         for t in self.board.flat:
@@ -283,7 +296,7 @@ class Board(tk.Canvas):
             p = self.board[x, y].piece
 
             if p and p.colour == self.turn:
-                self.selection = self.create_text((x + 0.5) * dx, (y + 0.5) * dy, anchor="w", font="Cambria", text=p.shape, fill="red")
+                self.selection = self.create_text((x + 0.5) * dx, (y + 0.5) * dy, font=self.font, text=p.APPEARANCE, fill="red")
                 self.redraw()
                 self.tag_raise(self.selection)
             else:
