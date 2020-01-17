@@ -1,0 +1,2 @@
+black:Ta8h8,Pb8g8,Lc8f8,Dd8,Ke8,pa7b7c7d7e7f7g7h7;
+white:Ta1h1,Pb1g1,Lc1f1,Dd1,Ke1,pa2b2c2d2e2f2g2h2;
