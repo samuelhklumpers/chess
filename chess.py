@@ -235,12 +235,22 @@ class Board(tk.Canvas):
         self.redraw()
 
     def resize(self, event=None):
-
         dx = self.winfo_width() / 8
         dy = self.winfo_height() / 8
 
         fontsize = -int(3 * min(dx, dy) / 4)
         self.font.configure(size=fontsize)
+
+        for x in range(8):
+            for y in range(8):
+                piece = self.board[x, y].piece
+
+                self.board[x, y].place_on_screen(piece)
+
+                for mem_piece in self.board[x, y].memory.values():
+                    self.board[x, y].place_on_screen(mem_piece)
+
+        self.redraw()
 
     def create(self, p, x, y, colour=None):
         colour = p.colour if not colour else colour
