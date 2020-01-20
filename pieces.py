@@ -169,11 +169,11 @@ class Pawn(Piece):
             yield self, (tile.x, tile.y + self.dy)
 
         t = tile.offset(1, self.dy)
-        if t:
+        if t and t.piece:
             yield self, (tile.x + 1, tile.y + self.dy)
 
         t = tile.offset(-1, self.dy)
-        if t:
+        if t and t.piece:
             yield self, (tile.x - 1, tile.y + self.dy)
 
     def copy(self, colour_override=None):
