@@ -9,6 +9,7 @@ from tkinter import font
 from pieces import *
 
 
+COLOURS = [Piece.BLACK, Piece.WHITE]
 
 TILE_BLACK = '#AF8521'
 TILE_WHITE = '#E2DA9C'
@@ -19,7 +20,7 @@ TILE_UNSEEN_WHITE = '#87825E'
 MEMORY_COLOUR = '#444444'
 
 window = tk.Tk("chess")
-window.geometry("480x560")
+window.geometry("560x560")
 
 
 def grouper(iterable, n, fillvalue=None):
@@ -30,9 +31,7 @@ def grouper(iterable, n, fillvalue=None):
 
 
 class Tile:
-    def __init__(self, x, y, board, colours=None):
-        if colours is None:
-            colours = [Piece.BLACK, Piece.WHITE]
+    def __init__(self, x, y, board):
 
         self.x = x
         self.y = y
@@ -41,8 +40,8 @@ class Tile:
 
         self.piece = None
         self.do_memory = True
-        self.memory = {c: None for c in colours}
-        self.taken = {c: None for c in colours}
+        self.memory = {c: None for c in COLOURS}
+        self.taken = {c: None for c in COLOURS}
 
         p = (self.x + self.y + 1) % 2
         self.colour = "white" if p else "black"
@@ -215,7 +214,7 @@ class Board(tk.Canvas):
         return self.board[x, y] if self.is_in_bounds(x, y) else None
 
     def draw(self, event=None):
-        if not self.loaded and self.winfo_width() > 1:
+        if not self.loaded:
             self.load("starting_board.txt")
             self.loaded = True
 
@@ -444,7 +443,7 @@ class Board(tk.Canvas):
 
 class TurnButton(tk.Button):
     def __init__(self, master, board):
-        self.text = tk.StringVar("")
+        self.text = tk.StringVar()
 
         tk.Button.__init__(self, master, command=self.start_turn, textvariable=self.text)
         self.board = board
@@ -460,6 +459,42 @@ class TurnButton(tk.Button):
             self.text.set(f"Start {self.turn} turn")
         elif self.board.turn == "end":
             self.board.play(self.board.history, replay=True)
+
+
+class KillCounter(tk.Frame):
+    def __init__(self, master, board, remain=True):
+        tk.Frame.__init__(self, master)
+
+        piece_num = len(Piece.pieces)
+        self.counter = {clr: {piece: 0 for piece in Piece.pieces} for clr in COLOURS}
+
+        if remain:
+            for tile in board.board.flat:
+                if tile.piece:
+                    p = tile.piece
+                    self.counter[p.colour][p.__class__] += 1
+
+        text_vars = {}
+
+        for i, clr in enumerate(COLOURS):
+            clr_label = tk.Label(self, text=clr.title())
+            clr_label.grid(row=(piece_num + 2) * i, column=0, columnspan=2)
+
+            clr_text_vars = {}
+
+            for j, piece in enumerate(Piece.pieces):
+                piece_label = tk.Label(self, text=piece.APPEARANCE)
+                piece_label.grid(row=(piece_num + 2) * i + j + 1, column=0)
+
+                piece_count = tk.StringVar(value=str(self.counter[clr][piece]))
+                clr_text_vars[piece] = piece_count
+                count_label = tk.Label(self, textvariable=clr_text_vars[piece])
+                count_label.grid(row=(piece_num + 2) * i + j + 1, column=1)
+
+            text_vars[clr] = clr_text_vars.copy()
+        self.rowconfigure(7, weight=1)
+
+        self.text_vars = text_vars
 
 
 class Client:
@@ -490,6 +525,8 @@ class Client:
 
         playfield = tk.Frame(window)
         chessboard = Board(playfield, client=self)
+        chessboard.load('starting_board.txt')
+        chessboard.loaded = True
 
         chessboard.grid(row=0, column=0, sticky='nsew')
         playfield.rowconfigure(0, weight=1)
@@ -503,9 +540,17 @@ class Client:
             turnbutton.grid(row=0, column=0, sticky='nsew')
             controlbar.rowconfigure(0, weight=1)
             controlbar.columnconfigure(0, weight=1)
-            controlbar.grid(row=1, column=0, sticky='nsew')
+            controlbar.grid(row=1, column=0, columnspan=2, sticky='nsew')
 
-        window.columnconfigure(0, weight=1)
+            displaybar = tk.Frame(window)
+            killcounter = KillCounter(displaybar, chessboard)
+            killcounter.grid(row=0, column=0, sticky='nsew')
+            displaybar.rowconfigure(0, weight=1)
+            displaybar.columnconfigure(0, weight=1)
+            displaybar.grid(row=0, column=1, sticky='nsew')
+
+        window.columnconfigure(0, weight=8)
+        window.columnconfigure(1, weight=1)
         window.rowconfigure(0, weight=8)
         window.rowconfigure(1, weight=1)
 
