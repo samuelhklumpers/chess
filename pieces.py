@@ -100,12 +100,6 @@ class Piece(ABC):
     def moves(self, tile):
         ...
 
-#    def __eq__(self, other):
-#         if not other:
-#             return False
-#
-#         return self.colour == other.colour and self.shape == other.shape
-
     def __hash__(self):
         return self.hash
 
