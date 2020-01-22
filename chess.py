@@ -102,6 +102,7 @@ class Tile:
             ret = None
 
             if self.piece:
+                self.board.take(self.piece)
                 ret = self.taken.setdefault(self.piece.colour, self.piece)
                 self.piece.delete()
 
@@ -157,6 +158,7 @@ class Board(tk.Canvas):
             self.bind("<Expose>", self.draw)
             self.bind("<Button-1>", self._click)
             self.bind("<Configure>", self.resize)
+            self.counter = None
         else:
             self.delete('all')
 
@@ -332,6 +334,11 @@ class Board(tk.Canvas):
         if replay:
             self.__init__(self.master, client=self.client, reinit=True)
             self.load("starting_board.txt")
+
+            if self.counter:
+                self.counter.reset()
+                self.counter.load_vals()
+
             self.turn = Piece.WHITE
 
             for t in self.board.flat:
@@ -440,6 +447,13 @@ class Board(tk.Canvas):
             self.set_state(Piece.BLACK, "normal")
             self.set_state(Piece.WHITE, "normal")
 
+    def take(self, piece):
+        if self.counter:
+            self.counter.increment(piece)
+
+    def set_counter(self, counter):
+        self.counter = counter
+
 
 class TurnButton(tk.Button):
     def __init__(self, master, board):
@@ -465,36 +479,52 @@ class KillCounter(tk.Frame):
     def __init__(self, master, board, remain=True):
         tk.Frame.__init__(self, master)
 
+        self.board = board
+        self.remain = remain
+        self.counter = {clr: {piece: [0, tk.StringVar()] for piece in Piece.pieces} for clr in COLOURS}
+
         piece_num = len(Piece.pieces)
-        self.counter = {clr: {piece: 0 for piece in Piece.pieces} for clr in COLOURS}
 
-        if remain:
-            for tile in board.board.flat:
-                if tile.piece:
-                    p = tile.piece
-                    self.counter[p.colour][p.__class__] += 1
-
-        text_vars = {}
+        self.reset()
 
         for i, clr in enumerate(COLOURS):
             clr_label = tk.Label(self, text=clr.title())
             clr_label.grid(row=(piece_num + 2) * i, column=0, columnspan=2)
 
-            clr_text_vars = {}
-
             for j, piece in enumerate(Piece.pieces):
                 piece_label = tk.Label(self, text=piece.APPEARANCE)
                 piece_label.grid(row=(piece_num + 2) * i + j + 1, column=0)
 
-                piece_count = tk.StringVar(value=str(self.counter[clr][piece]))
-                clr_text_vars[piece] = piece_count
-                count_label = tk.Label(self, textvariable=clr_text_vars[piece])
+                count_label = tk.Label(self, textvariable=self.counter[clr][piece][1])
                 count_label.grid(row=(piece_num + 2) * i + j + 1, column=1)
 
-            text_vars[clr] = clr_text_vars.copy()
-        self.rowconfigure(7, weight=1)
+        self.rowconfigure(piece_num + 1, weight=1)
 
-        self.text_vars = text_vars
+        self.load_vals()
+
+    def reset(self):
+        for clr in COLOURS:
+            for piece in Piece.pieces:
+                self.counter[clr][piece][0] = 0
+
+        if self.remain:
+            for tile in self.board.board.flat:
+                if tile.piece:
+                    p = tile.piece
+                    self.counter[p.colour][p.__class__][0] += 1
+
+    def load_vals(self):
+        for clr in COLOURS:
+            for piece in Piece.pieces:
+                self.counter[clr][piece][1].set(str(self.counter[clr][piece][0]))
+
+    def increment(self, piece):
+        incr = -1 if self.remain else 1
+        clr = piece.colour
+        p = piece.__class__
+
+        self.counter[clr][p][0] += incr
+        self.counter[clr][p][1].set(self.counter[clr][p][0])
 
 
 class Client:
@@ -548,6 +578,8 @@ class Client:
             displaybar.rowconfigure(0, weight=1)
             displaybar.columnconfigure(0, weight=1)
             displaybar.grid(row=0, column=1, sticky='nsew')
+
+            chessboard.set_counter(killcounter)
 
         window.columnconfigure(0, weight=8)
         window.columnconfigure(1, weight=1)
