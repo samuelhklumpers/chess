@@ -371,9 +371,9 @@ class Board(tk.Canvas):
         x1, x2 = ord(x1) - a, ord(x2) - a
         y1, y2 = 8 - int(y1), 8 - int(y2)
 
-        self.do_move(x1, y1, x2, y2)
+        self.do_move(x1, y1, x2, y2, record=False)
 
-    def do_move(self, x1, y1, x2, y2):
+    def do_move(self, x1, y1, x2, y2, record=True):
         # TODO p2p
         if x1 == x2 and y1 == y2:
             return
@@ -394,9 +394,10 @@ class Board(tk.Canvas):
             if np.array_equal(m, end):
                 tile.piece.transfer(tile, self.board[x2, y2])
 
-                move_str = f"{chr(ord('a') + x1)}{8 - y1}{chr(ord('a') + x2)}{8 - y2}"
-                self.history += [move_str]
-                self.client.move(move_str)
+                if record:
+                    move_str = f"{chr(ord('a') + x1)}{8 - y1}{chr(ord('a') + x2)}{8 - y2}"
+                    self.history += [move_str]
+                    self.client.move(move_str)
 
                 self.turn = "wait"
                 self.client.end_turn()
