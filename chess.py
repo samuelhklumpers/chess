@@ -550,7 +550,10 @@ class Client:
             self.waiting.wait()
             while self.running:
                 msg = self.conn.recv(1024)
+                self.board.set_state(Piece.BLACK, "hidden")
+                self.board.set_state(Piece.WHITE, "hidden")
                 self.board.read_move(msg.decode())
+                self.redraw()
                 self.board.turn = self.colour
                 self.waiting.wait()
 
