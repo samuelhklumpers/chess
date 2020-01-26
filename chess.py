@@ -403,6 +403,8 @@ class Board(tk.Canvas):
                     self.turn = "wait"
                     self.client.end_turn()
 
+                self.board.win()
+
     def win(self):
         white = sum(p.shape == "K" for p in self.pieces[Piece.WHITE])
         black = sum(p.shape == "K" for p in self.pieces[Piece.BLACK])
@@ -522,8 +524,6 @@ class Client:
         self.board.redraw(colour=self.colour)
 
     def end_turn(self):
-        self.board.win()
-
         if not self.running:
             return
 
