@@ -67,22 +67,23 @@ def process(addr1, prot, room):
 
     print(f"Client wants to connect to room {room} with protocol {prot}")
 
-    if room in rooms[prot]:
+    prot_room = rooms[prot]
+    if room in prot_room:
         print("Room was open")
-        addr2 = rooms[room]
+        addr2 = prot_room[room]
 
         if prot == "proxy":
             proxy_thread = threading.Thread(target=lambda: proxy(addr1, addr2))
             proxy_thread.start()
 
             print("Starting proxy thread. Closed room")
-            del rooms[room]
+            del prot_room[room]
         else:
             punch(addr1, addr2)
             print("Forwarded clients. Closed room")
-            del rooms[room]
+            del prot_room[room]
     else:
-        rooms[room] = addr1
+        prot_room[room] = addr1
         print("Opened room")
 
 
