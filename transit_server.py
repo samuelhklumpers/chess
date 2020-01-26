@@ -20,9 +20,9 @@ def mainloop():
         c1, a1 = s.accept()
         print(f"Incoming connection from {a1}")
 
-        prot = c1.recv(1024)
-        room = c1.recv(1024)
+        prot, room = c1.recv(1024).decode().split(",")
 
+        print("Received subscription")
         process((c1, a1), prot, room)
 
 
@@ -84,3 +84,6 @@ def process(addr1, prot, room):
     else:
         rooms[room] = addr1
         print("Opened room")
+
+
+mainloop()
