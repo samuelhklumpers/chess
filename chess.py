@@ -512,7 +512,9 @@ class Client:
             self.board.turn = self.colour
             self.board.redraw()
             self.board.turn = "wait"
-            self.waiting.notify()
+
+            with self.waiting:
+                self.waiting.notify()
 
     def redraw(self):
         self.board.set_state(self.colour, "hidden")
