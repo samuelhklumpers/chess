@@ -6,7 +6,7 @@ import numpy as np
 import itertools as itr
 
 from pieces import *
-
+from transit_client import transit
 
 
 TILE_BLACK = '#AF8521'
@@ -393,13 +393,12 @@ class Board(tk.Canvas):
             if np.array_equal(m, end):
                 tile.piece.transfer(tile, self.board[x2, y2])
 
-                self.history += [f"{chr(ord('a') + x1)}{8 - y1}{chr(ord('a') + x2)}{8 - y2}"]
+                move_str = [f"{chr(ord('a') + x1)}{8 - y1}{chr(ord('a') + x2)}{8 - y2}"]
+                self.history += move_str
+                self.client.move(move_str)
 
                 self.turn = "wait"
                 self.client.end_turn()
-
-        self.redraw()
-        self.win()
 
     def win(self):
         white = sum(p.shape == "K" for p in self.pieces[Piece.WHITE])
@@ -426,6 +425,8 @@ class Board(tk.Canvas):
             self.set_state(Piece.BLACK, "normal")
             self.set_state(Piece.WHITE, "normal")
 
+            self.client.end_game()
+
 
 class TurnButton(tk.Button):
     # TODO p2p remove
@@ -451,28 +452,17 @@ class TurnButton(tk.Button):
 class Client:
     def __init__(self, client_mode="local"):
         self.client_mode = client_mode
+        self.running = True
+        self.colour = None
 
         if client_mode == "online":
-            mode = input("Mode (host/client): ")
-            if mode.lower() == "host":
-                offset = input("Port offset: ")
-                offset = int(offset)
+            server = input("Server ip: ")
+            port = input("Port: ")
+            room = input("Room: ")
 
-                s = socket.socket()
-                s.bind(('', 60000 + offset))
-                s.listen(1)
+            port = int(port)
 
-                conn, addr = s.accept()
-            elif mode.lower() == "client":
-                host = input("Host address: ")
-                offset = input("Port offset: ")
-                offset = int(offset)
-
-                s = socket.socket()
-                s.connect((host, 60000 + offset))
-                conn = s
-            else:
-                exit()
+            self.conn = transit("punch", server, port, room)
 
         playfield = tk.Frame(window)
         chessboard = Board(playfield, client=self)
@@ -495,13 +485,53 @@ class Client:
         window.rowconfigure(0, weight=8)
         window.rowconfigure(1, weight=1)
 
+        self.board = chessboard
+
         window.mainloop()
 
-    def end_turn(self):
-        if self.client_mode == "local":
-            ...
+    def negotiate_colour(self):
+        roll = int(np.random.rand() * 1e6)
+
+        self.conn.send(str(roll).encode())
+        other_roll = int(self.conn.recv(1024).decode())
+
+        if roll > other_roll:
+            self.colour = Piece.WHITE
         else:
-            ...  # poll conn
+            self.colour = Piece.BLACK
+
+    def redraw(self):
+        self.board.set_state(self.colour, "hidden")
+        self.board.set_state(self.colour, "normal")
+        self.board.vision(self.colour)
+
+    def end_turn(self):
+        self.board.win()
+
+        if not self.running:
+            return
+
+        if self.client_mode == "local":
+            self.board.redraw()
+        else:
+            self.redraw()
+
+    def end_game(self):
+        if self.client_mode == "online":
+            self.conn.shutdown(socket.SHUT_RDWR)
+            self.conn.close()
+
+        self.running = False
+
+    def move(self, move_str):
+        if self.client_mode == "online":
+            self.conn.send(move_str.encode())
+
+    def wait_conn(self):
+        msg = self.conn.recv(1024)
+        self.board.read_move(msg.decode())
+        self.redraw()
+        self.board.turn = self.colour
 
 
 c = Client(client_mode="online")
