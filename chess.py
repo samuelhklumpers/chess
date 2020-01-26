@@ -371,9 +371,9 @@ class Board(tk.Canvas):
         x1, x2 = ord(x1) - a, ord(x2) - a
         y1, y2 = 8 - int(y1), 8 - int(y2)
 
-        self.do_move(x1, y1, x2, y2, record=False)
+        self.do_move(x1, y1, x2, y2, force=False)
 
-    def do_move(self, x1, y1, x2, y2, record=True):
+    def do_move(self, x1, y1, x2, y2, force=True):
         # TODO p2p
         if x1 == x2 and y1 == y2:
             return
@@ -394,13 +394,13 @@ class Board(tk.Canvas):
             if np.array_equal(m, end):
                 tile.piece.transfer(tile, self.board[x2, y2])
 
-                if record:
+                if force:
                     move_str = f"{chr(ord('a') + x1)}{8 - y1}{chr(ord('a') + x2)}{8 - y2}"
                     self.history += [move_str]
                     self.client.move(move_str)
-
-                self.turn = "wait"
-                self.client.end_turn()
+                else:
+                    self.turn = "wait"
+                    self.client.end_turn()
 
     def win(self):
         white = sum(p.shape == "K" for p in self.pieces[Piece.WHITE])
@@ -507,11 +507,11 @@ class Client:
         if roll > other_roll:
             self.colour = Piece.WHITE
             self.board.turn = self.colour
-            self.board.redraw()
+            self.redraw()
         else:
             self.colour = Piece.BLACK
             self.board.turn = self.colour
-            self.board.redraw()
+            self.redraw()
             self.board.turn = "wait"
 
             with self.waiting:
@@ -550,7 +550,6 @@ class Client:
             while self.running:
                 msg = self.conn.recv(1024)
                 self.board.read_move(msg.decode())
-                self.redraw()
                 self.board.turn = self.colour
                 self.waiting.wait()
 
