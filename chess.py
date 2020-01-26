@@ -291,7 +291,6 @@ class Board(tk.Canvas):
 
             if p and p.colour == self.turn:
                 self.selection = self.create_text((x + 0.5) * dx, (y + 0.5) * dy, anchor="w", font="Cambria", text=p.shape, fill="red")
-                #self.redraw()
                 self.tag_raise(self.selection)
             else:
                 self._e1 = None
@@ -374,9 +373,9 @@ class Board(tk.Canvas):
         x1, x2 = ord(x1) - a, ord(x2) - a
         y1, y2 = 8 - int(y1), 8 - int(y2)
 
-        self.do_move(x1, y1, x2, y2, record=True)
+        self.do_move(x1, y1, x2, y2, record=False)
 
-    def do_move(self, x1, y1, x2, y2, record=False):
+    def do_move(self, x1, y1, x2, y2, record=True):
         # TODO p2p
         if x1 == x2 and y1 == y2:
             return
@@ -509,15 +508,15 @@ class Client:
         if roll > other_roll:
             self.colour = Piece.WHITE
             self.board.turn = self.colour
-            self.redraw()
         else:
             self.colour = Piece.BLACK
             self.board.turn = self.colour
-            self.redraw()
             self.board.turn = "wait"
 
             with self.waiting:
                 self.waiting.notify()
+
+        self.redraw()
 
     def redraw(self):
         self.board.redraw(colour=self.colour)
