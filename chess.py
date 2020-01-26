@@ -543,14 +543,15 @@ class Client:
             self.conn.send(move_str.encode())
 
     def conn_thread(self):
-        with self.waiting:
+        self.waiting.acquire()
+        self.waiting.wait()
+        while self.running:
+            msg = self.conn.recv(1024)
+            self.board.read_move(msg.decode())
+            self.redraw()
+            self.board.turn = self.colour
             self.waiting.wait()
-            while self.running:
-                msg = self.conn.recv(1024)
-                self.board.read_move(msg.decode())
-                self.redraw()
-                self.board.turn = self.colour
-                self.waiting.wait()
+        self.waiting.release()
 
 
 c = Client(client_mode="online")
