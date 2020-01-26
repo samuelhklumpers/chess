@@ -394,8 +394,8 @@ class Board(tk.Canvas):
             if np.array_equal(m, end):
                 tile.piece.transfer(tile, self.board[x2, y2])
 
-                move_str = [f"{chr(ord('a') + x1)}{8 - y1}{chr(ord('a') + x2)}{8 - y2}"]
-                self.history += move_str
+                move_str = f"{chr(ord('a') + x1)}{8 - y1}{chr(ord('a') + x2)}{8 - y2}"
+                self.history += [move_str]
                 self.client.move(move_str)
 
                 self.turn = "wait"
