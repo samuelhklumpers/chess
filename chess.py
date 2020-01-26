@@ -529,7 +529,8 @@ class Client:
             self.board.redraw()
         else:
             self.redraw()
-            self.waiting.notify()
+            with self.waiting:
+                self.waiting.notify()
 
     def end_game(self):
         if self.client_mode == "online":
@@ -543,15 +544,14 @@ class Client:
             self.conn.send(move_str.encode())
 
     def conn_thread(self):
-        self.waiting.acquire()
-        self.waiting.wait()
-        while self.running:
-            msg = self.conn.recv(1024)
-            self.board.read_move(msg.decode())
-            self.redraw()
-            self.board.turn = self.colour
+        with self.waiting:
             self.waiting.wait()
-        self.waiting.release()
+            while self.running:
+                msg = self.conn.recv(1024)
+                self.board.read_move(msg.decode())
+                self.redraw()
+                self.board.turn = self.colour
+                self.waiting.wait()
 
 
 c = Client(client_mode="online")
