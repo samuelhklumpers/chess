@@ -1,5 +1,6 @@
 import socket
 import time
+import threading
 
 import tkinter as tk
 import numpy as np
@@ -453,6 +454,7 @@ class Client:
     def __init__(self, client_mode="local"):
         self.client_mode = client_mode
         self.running = True
+        self.waiting = threading.Condition()
         self.colour = None
 
         if client_mode == "online":
@@ -462,7 +464,8 @@ class Client:
 
             port = int(port)
 
-            self.conn = transit("punch", server, port, room)
+            self.conn = transit("proxy", server, port, room)
+            self.negotiate_colour()
 
         playfield = tk.Frame(window)
         chessboard = Board(playfield, client=self)
@@ -495,10 +498,19 @@ class Client:
         self.conn.send(str(roll).encode())
         other_roll = int(self.conn.recv(1024).decode())
 
+        conn_thread = threading.Thread(target=self.conn_thread)
+        conn_thread.start()
+
         if roll > other_roll:
             self.colour = Piece.WHITE
+            self.board.turn = self.colour
+            self.board.redraw()
         else:
             self.colour = Piece.BLACK
+            self.board.turn = self.colour
+            self.board.redraw()
+            self.board.turn = "wait"
+            self.waiting.notify()
 
     def redraw(self):
         self.board.set_state(self.colour, "hidden")
@@ -515,6 +527,7 @@ class Client:
             self.board.redraw()
         else:
             self.redraw()
+            self.waiting.notify()
 
     def end_game(self):
         if self.client_mode == "online":
@@ -527,11 +540,14 @@ class Client:
         if self.client_mode == "online":
             self.conn.send(move_str.encode())
 
-    def wait_conn(self):
-        msg = self.conn.recv(1024)
-        self.board.read_move(msg.decode())
-        self.redraw()
-        self.board.turn = self.colour
+    def conn_thread(self):
+        self.waiting.wait()
+        while self.running:
+            msg = self.conn.recv(1024)
+            self.board.read_move(msg.decode())
+            self.redraw()
+            self.board.turn = self.colour
+            self.waiting.wait()
 
 
 c = Client(client_mode="online")
