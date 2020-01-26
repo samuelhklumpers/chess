@@ -41,6 +41,9 @@ def proxy(addr1, addr2):
     c1, a1 = addr1
     c2, a2 = addr2
 
+    c1.send(b"started")
+    c2.send(b"started")
+
     with c1, c2:
         while True:
             r, _, _ = select.select([c1, c2], [], [])

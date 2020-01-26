@@ -17,7 +17,7 @@ def transit(mode, server, port, room):
 
     s.bind(('', local_port))
     s.connect((server, port))
-    s.send((mode + room).encode())
+    s.send(f"{mode},{room}".encode())
 
     if mode == "punch":
         ip, port = s.recv(1024).decode().split(":")
@@ -31,6 +31,8 @@ def transit(mode, server, port, room):
 
         return c
     else:
+        s.recv(1024)
+
         return s
 
 
