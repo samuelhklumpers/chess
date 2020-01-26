@@ -457,16 +457,6 @@ class Client:
         self.waiting = threading.Condition()
         self.colour = None
 
-        if client_mode == "online":
-            server = input("Server ip: ")
-            port = input("Port: ")
-            room = input("Room: ")
-
-            port = int(port)
-
-            self.conn = transit("proxy", server, port, room)
-            self.negotiate_colour()
-
         playfield = tk.Frame(window)
         chessboard = Board(playfield, client=self)
 
@@ -489,6 +479,18 @@ class Client:
         window.rowconfigure(1, weight=1)
 
         self.board = chessboard
+
+        if client_mode == "online":
+            server = input("Server ip: ")
+            port = input("Port: ")
+            room = input("Room: ")
+
+            port = int(port)
+
+            def connect():
+                self.conn = transit("proxy", server, port, room)
+                self.negotiate_colour()
+            window.after(1000, connect)
 
         window.mainloop()
 
@@ -541,13 +543,14 @@ class Client:
             self.conn.send(move_str.encode())
 
     def conn_thread(self):
-        self.waiting.wait()
-        while self.running:
-            msg = self.conn.recv(1024)
-            self.board.read_move(msg.decode())
-            self.redraw()
-            self.board.turn = self.colour
+        with self.waiting:
             self.waiting.wait()
+            while self.running:
+                msg = self.conn.recv(1024)
+                self.board.read_move(msg.decode())
+                self.redraw()
+                self.board.turn = self.colour
+                self.waiting.wait()
 
 
 c = Client(client_mode="online")
