@@ -243,9 +243,9 @@ class Board(tk.Canvas):
         for t in self.board.flat:
             t.set_state(colour, state)
 
-    def redraw(self, event=None):
+    def redraw(self, event=None, colour=None):
         # TODO p2p remove
-        turn = self.turn
+        turn = self.turn if not colour else colour
 
         if turn == "wait":
             self.set_state(Piece.BLACK, "hidden")
@@ -291,7 +291,7 @@ class Board(tk.Canvas):
 
             if p and p.colour == self.turn:
                 self.selection = self.create_text((x + 0.5) * dx, (y + 0.5) * dy, anchor="w", font="Cambria", text=p.shape, fill="red")
-                self.redraw()
+                #self.redraw()
                 self.tag_raise(self.selection)
             else:
                 self._e1 = None
@@ -518,9 +518,7 @@ class Client:
                 self.waiting.notify()
 
     def redraw(self):
-        self.board.set_state(self.colour, "hidden")
-        self.board.set_state(self.colour, "normal")
-        self.board.vision(self.colour)
+        self.board.redraw(colour=self.colour)
 
     def end_turn(self):
         self.board.win()
