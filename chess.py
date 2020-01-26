@@ -315,6 +315,8 @@ class Board(tk.Canvas):
 
     def play(self, moves, speed=2.0, replay=False):
         # TODO p2p?
+        moves = list(moves)
+
         if replay:
             self.__init__(self.master, client=self.client, reinit=True)
             self.load("starting_board.txt")
@@ -362,6 +364,7 @@ class Board(tk.Canvas):
             self.vision(Piece.BLACK)
             self.vision(Piece.WHITE)
 
+        self.history = moves
         self.win()
 
     def read_move(self, move):
@@ -371,9 +374,9 @@ class Board(tk.Canvas):
         x1, x2 = ord(x1) - a, ord(x2) - a
         y1, y2 = 8 - int(y1), 8 - int(y2)
 
-        self.do_move(x1, y1, x2, y2, force=False)
+        self.do_move(x1, y1, x2, y2, record=True)
 
-    def do_move(self, x1, y1, x2, y2, force=True):
+    def do_move(self, x1, y1, x2, y2, record=False):
         # TODO p2p
         if x1 == x2 and y1 == y2:
             return
@@ -394,11 +397,10 @@ class Board(tk.Canvas):
             if np.array_equal(m, end):
                 tile.piece.transfer(tile, self.board[x2, y2])
 
-                if force:
+                if record:
                     move_str = f"{chr(ord('a') + x1)}{8 - y1}{chr(ord('a') + x2)}{8 - y2}"
                     self.history += [move_str]
                     self.client.move(move_str)
-                else:
                     self.turn = "wait"
                     self.client.end_turn()
 
