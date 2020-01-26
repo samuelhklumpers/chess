@@ -403,7 +403,7 @@ class Board(tk.Canvas):
                     self.turn = "wait"
                     self.client.end_turn()
 
-                self.board.win()
+                self.win()
 
     def win(self):
         white = sum(p.shape == "K" for p in self.pieces[Piece.WHITE])
