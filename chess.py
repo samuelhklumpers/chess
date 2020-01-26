@@ -535,11 +535,12 @@ class Client:
                 self.waiting.notify()
 
     def end_game(self):
+        self.running = False
+
         if self.client_mode == "online":
             self.conn.shutdown(socket.SHUT_RDWR)
             self.conn.close()
 
-        self.running = False
 
     def move(self, move_str):
         if self.client_mode == "online":
