@@ -537,11 +537,10 @@ class Client:
     def end_game(self):
         self.running = False
 
+        print(self.board.history)
+
         if self.client_mode == "online":
             self.conn.close()
-            with self.waiting:
-                self.waiting.notify()
-            self.conn_thread.join()
 
     def move(self, move_str):
         if self.client_mode == "online":
