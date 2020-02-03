@@ -505,7 +505,7 @@ class Client:
         self.conn.send(str(roll).encode())
         other_roll = int(self.conn.recv(1024).decode())
 
-        self.conn_thread = threading.Thread(target=self.conn_thread)
+        self.conn_thread = threading.Thread(target=self.conn_func)
         self.conn_thread.start()
 
         if roll > other_roll:
@@ -547,7 +547,7 @@ class Client:
         if self.client_mode == "online":
             self.conn.send(move_str.encode())
 
-    def conn_thread(self):
+    def conn_func(self):
         with self.waiting:
             self.waiting.wait()
             while self.running:
