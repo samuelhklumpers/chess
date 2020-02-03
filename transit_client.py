@@ -7,33 +7,38 @@ local_port = 1234
 
 
 def transit(mode, server, port, room):
-    if mode not in ["punch", "proxy"]:
+    if mode not in ["direct", "punch", "proxy"]:
         return None
 
     s = socket.socket()
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-    print(f"Requesting room {room} on {server}:{port} with local port {local_port}...")
-
     s.bind(('', local_port))
     s.connect((server, port))
-    s.send(f"{mode},{room}".encode())
 
-    if mode == "punch":
-        ip, port = s.recv(1024).decode().split(":")
-        port = int(port)
-
-        addr = (ip, port)
-        print(f"Received forward to {addr}")
-
-        c = punch(addr)
-        s.close()
-
-        return c
-    else:
-        s.recv(1024)
-
+    if mode == "direct":
+        print(f"Connected to {server}:{port} with local port {local_port}")
         return s
+    elif mode in ["punch", "proxy"]:
+        print(f"Requesting room {room} on {server}:{port} with local port {local_port}...")
+
+        s.send(f"{mode},{room}".encode())
+
+        if mode == "punch":
+            ip, port = s.recv(1024).decode().split(":")
+            port = int(port)
+
+            addr = (ip, port)
+            print(f"Received forward to {addr}")
+
+            c = punch(addr)
+            s.close()
+
+            return c
+        else:
+            s.recv(1024)
+
+            return s
 
 
 def punch(addr):

@@ -460,6 +460,7 @@ class Client:
         self.running = True
         self.waiting = threading.Condition()
         self.colour = None
+        self.conn = None
 
         playfield = tk.Frame(window)
         chessboard = Board(playfield, client=self)
@@ -487,12 +488,12 @@ class Client:
         if client_mode == "online":
             server = input("Server ip: ")
             port = input("Port: ")
-            room = input("Room: ")
+            room = input("Room (enter 'direct' to connect without intermediate server): ")
 
             port = int(port)
 
             def connect():
-                self.conn = transit("proxy", server, port, room)
+                self.conn = transit("direct" if room == "direct" else "proxy", server, port, room)
                 self.negotiate_colour()
             window.after(1000, connect)
 
