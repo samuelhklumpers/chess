@@ -505,8 +505,8 @@ class Client:
         self.conn.send(str(roll).encode())
         other_roll = int(self.conn.recv(1024).decode())
 
-        conn_thread = threading.Thread(target=self.conn_thread)
-        conn_thread.start()
+        self.conn_thread = threading.Thread(target=self.conn_thread)
+        self.conn_thread.start()
 
         if roll > other_roll:
             self.colour = Piece.WHITE
@@ -538,10 +538,10 @@ class Client:
     def end_game(self):
         self.running = False
 
-        if self.client_mode == "online":
-            self.conn.shutdown(socket.SHUT_RDWR)
-            self.conn.close()
+        print(self.board.history)
 
+        if self.client_mode == "online":
+            self.conn.close()
 
     def move(self, move_str):
         if self.client_mode == "online":
