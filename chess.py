@@ -181,6 +181,7 @@ class Board(tk.Canvas):
         self.selection = None
 
     def load(self, fn):
+        self.loaded = True
         self.resize()
 
         constructors = {p.SHAPE: p for p in Piece.pieces}
@@ -220,7 +221,6 @@ class Board(tk.Canvas):
     def draw(self, event=None):
         if not self.loaded:
             self.load("starting_board.txt")
-            self.loaded = True
 
         dx = self.winfo_width() / 8
         dy = self.winfo_height() / 8
@@ -529,7 +529,7 @@ class KillCounter(tk.Frame):
 
         elif self.mode != "taken":
             raise ValueError("Incorrect mode keyword")
-        
+
         for clr in COLOURS:
             for piece in Piece.pieces:
                 self.counter[clr][piece].set()
@@ -572,7 +572,6 @@ class Client:
         playfield = tk.Frame(window)
         chessboard = Board(playfield, client=self)
         chessboard.load('starting_board.txt')
-        chessboard.loaded = True
 
         chessboard.grid(row=0, column=0, sticky='nsew')
         playfield.rowconfigure(0, weight=1)
