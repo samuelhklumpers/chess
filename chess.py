@@ -478,11 +478,11 @@ class TurnButton(tk.Button):
 
 
 class KillCounter(tk.Frame):
-    def __init__(self, master, board, remain=True):
+    def __init__(self, master, board, mode="remaining"):
         tk.Frame.__init__(self, master)
 
         self.board = board
-        self.remain = remain
+        self.mode = mode
         self.counter = {clr: {piece: [0, tk.StringVar()] for piece in Piece.pieces} for clr in COLOURS}
 
         piece_num = len(Piece.pieces)
@@ -509,11 +509,13 @@ class KillCounter(tk.Frame):
             for piece in Piece.pieces:
                 self.counter[clr][piece][0] = 0
 
-        if self.remain:
+        if self.mode == "remaining":
             for tile in self.board.board.flat:
                 if tile.piece:
                     p = tile.piece
                     self.counter[p.colour][p.__class__][0] += 1
+        elif self.mode != "taken":
+            raise ValueError("Incorrect mode keyword")
 
     def load_vals(self):
         for clr in COLOURS:
@@ -521,7 +523,7 @@ class KillCounter(tk.Frame):
                 self.counter[clr][piece][1].set(str(self.counter[clr][piece][0]))
 
     def increment(self, piece):
-        incr = -1 if self.remain else 1
+        incr = -1 if self.mode == "remaining" else 1
         clr = piece.colour
         p = piece.__class__
 
