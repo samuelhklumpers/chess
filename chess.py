@@ -19,6 +19,8 @@ TILE_UNSEEN_WHITE = '#87825E'
 
 MEMORY_COLOUR = '#444444'
 
+REL_PIECE_SIZE = 0.75
+
 window = tk.Tk("chess")
 window.geometry("560x560")
 
@@ -239,7 +241,7 @@ class Board(tk.Canvas):
         dx = self.winfo_width() / 8
         dy = self.winfo_height() / 8
 
-        fontsize = -int(3 * min(dx, dy) / 4)
+        fontsize = -int(REL_PIECE_SIZE * min(dx, dy))
         self.font.configure(size=fontsize)
 
         for x in range(8):
