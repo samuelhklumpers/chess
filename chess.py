@@ -339,7 +339,6 @@ class Board(tk.Canvas):
 
             if self.counter:
                 self.counter.reset()
-                self.counter.load_vals()
 
             self.turn = Piece.WHITE
 
@@ -478,16 +477,29 @@ class TurnButton(tk.Button):
 
 
 class KillCounter(tk.Frame):
+
+    class NumStringVar():
+        def __init__(self, integer, stringvar):
+            self.i = integer
+            self.s = stringvar
+
+        def set(self):
+            self.s.set(str(self.i))
+
+        def add(self, n):
+            self.i += n
+            self.set()
+
+
     def __init__(self, master, board, mode="remaining"):
         tk.Frame.__init__(self, master)
 
         self.board = board
         self.mode = mode
-        self.counter = {clr: {piece: [0, tk.StringVar()] for piece in Piece.pieces} for clr in COLOURS}
+        self.counter = {clr: {piece: KillCounter.NumStringVar(0, tk.StringVar()) \
+                              for piece in Piece.pieces} for clr in COLOURS}
 
         piece_num = len(Piece.pieces)
-
-        self.reset()
 
         for i, clr in enumerate(COLOURS):
             clr_label = tk.Label(self, text=clr.title())
@@ -497,38 +509,38 @@ class KillCounter(tk.Frame):
                 piece_label = tk.Label(self, text=piece.APPEARANCE)
                 piece_label.grid(row=(piece_num + 2) * i + j + 1, column=0)
 
-                count_label = tk.Label(self, textvariable=self.counter[clr][piece][1])
+                count_label = tk.Label(self, textvariable=self.counter[clr][piece].s)
                 count_label.grid(row=(piece_num + 2) * i + j + 1, column=1)
 
         self.rowconfigure(piece_num + 1, weight=1)
 
-        self.load_vals()
+        self.reset()
 
     def reset(self):
         for clr in COLOURS:
             for piece in Piece.pieces:
-                self.counter[clr][piece][0] = 0
+                self.counter[clr][piece].i = 0
 
         if self.mode == "remaining":
             for tile in self.board.board.flat:
                 if tile.piece:
                     p = tile.piece
-                    self.counter[p.colour][p.__class__][0] += 1
+                    self.counter[p.colour][p.__class__].i += 1
+
         elif self.mode != "taken":
             raise ValueError("Incorrect mode keyword")
-
-    def load_vals(self):
+        
         for clr in COLOURS:
             for piece in Piece.pieces:
-                self.counter[clr][piece][1].set(str(self.counter[clr][piece][0]))
+                self.counter[clr][piece].set()
 
     def increment(self, piece):
         incr = -1 if self.mode == "remaining" else 1
         clr = piece.colour
         p = piece.__class__
 
-        self.counter[clr][p][0] += incr
-        self.counter[clr][p][1].set(self.counter[clr][p][0])
+        self.counter[clr][p].add(incr)
+        self.counter[clr][p].set()
 
 
 class Client:
