@@ -479,25 +479,34 @@ class TurnButton(tk.Button):
 class KillCounter(tk.Frame):
 
     class NumStringVar():
-        def __init__(self, integer, stringvar):
-            self.i = integer
+        def __init__(self, stringvar):
+            self.i = 0
             self.s = stringvar
 
-        def set(self):
-            self.s.set(str(self.i))
+        def set(self, n):
+            self.i = n
 
         def add(self, n):
             self.i += n
-            self.set()
+            self.update()
 
+        def update(self):
+            self.s.set(str(self.i))
 
     def __init__(self, master, board, mode="remaining"):
         tk.Frame.__init__(self, master)
 
         self.board = board
         self.mode = mode
-        self.counter = {clr: {piece: KillCounter.NumStringVar(0, tk.StringVar()) \
+        self.counter = {clr: {piece: KillCounter.NumStringVar(tk.StringVar()) \
                               for piece in Piece.pieces} for clr in COLOURS}
+
+        if self.mode == "remaining":
+            ...
+        elif self.mode == "taken":
+            ...
+        else:
+            raise ValueError(f"Incorrect mode keyword: {self.mode}")
 
         piece_num = len(Piece.pieces)
 
@@ -519,20 +528,17 @@ class KillCounter(tk.Frame):
     def reset(self):
         for clr in COLOURS:
             for piece in Piece.pieces:
-                self.counter[clr][piece].i = 0
+                self.counter[clr][piece].set(0)
 
         if self.mode == "remaining":
             for tile in self.board.board.flat:
                 if tile.piece:
                     p = tile.piece
-                    self.counter[p.colour][p.__class__].i += 1
-
-        elif self.mode != "taken":
-            raise ValueError("Incorrect mode keyword")
+                    self.counter[p.colour][p.__class__].add(1)
 
         for clr in COLOURS:
             for piece in Piece.pieces:
-                self.counter[clr][piece].set()
+                self.counter[clr][piece].update()
 
     def increment(self, piece):
         incr = -1 if self.mode == "remaining" else 1
@@ -540,7 +546,7 @@ class KillCounter(tk.Frame):
         p = piece.__class__
 
         self.counter[clr][p].add(incr)
-        self.counter[clr][p].set()
+        self.counter[clr][p].update()
 
 
 class Client:
