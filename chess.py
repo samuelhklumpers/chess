@@ -154,7 +154,7 @@ class Tile:
 
 
 class Board(tk.Canvas):
-    def __init__(self, master, client, reinit=False):
+    def __init__(self, master, client, start_file, reinit=False):
         if not reinit:
             tk.Canvas.__init__(self, master=master)
             self.bind("<Expose>", self.draw)
@@ -180,13 +180,15 @@ class Board(tk.Canvas):
         self._e2 = None
         self.selection = None
 
-    def load(self, fn):
+        self.start_file = start_file
+
+    def load(self):
         self.loaded = True
         self.resize()
 
         constructors = {p.SHAPE: p for p in Piece.pieces}
 
-        with open(fn) as f:
+        with open(self.start_file) as f:
             text = f.read()
         text = "".join(text.split())
         lines = text.split(";")
@@ -220,7 +222,7 @@ class Board(tk.Canvas):
 
     def draw(self, event=None):
         if not self.loaded:
-            self.load("starting_board.txt")
+            self.load()
 
         dx = self.winfo_width() / 8
         dy = self.winfo_height() / 8
@@ -334,8 +336,8 @@ class Board(tk.Canvas):
 
     def play(self, moves, speed=2.0, replay=False):
         if replay:
-            self.__init__(self.master, client=self.client, reinit=True)
-            self.load("starting_board.txt")
+            self.__init__(self.master, client=self.client, start_file=self.start_file, reinit=True)
+            self.load()
 
             if self.counter:
                 self.counter.reset()
@@ -550,7 +552,7 @@ class KillCounter(tk.Frame):
 
 
 class Client:
-    def __init__(self, client_mode="local"):
+    def __init__(self, client_mode="local", kill_counter=True):
         self.client_mode = client_mode
 
         if client_mode == "online":
@@ -576,8 +578,8 @@ class Client:
                 exit()
 
         playfield = tk.Frame(window)
-        chessboard = Board(playfield, client=self)
-        chessboard.load('starting_board.txt')
+        chessboard = Board(playfield, client=self, start_file='starting_board_only_kings.txt')
+        chessboard.load()
 
         chessboard.grid(row=0, column=0, sticky='nsew')
         playfield.rowconfigure(0, weight=1)
@@ -593,14 +595,15 @@ class Client:
             controlbar.columnconfigure(0, weight=1)
             controlbar.grid(row=1, column=0, columnspan=2, sticky='nsew')
 
-            displaybar = tk.Frame(window)
-            killcounter = KillCounter(displaybar, chessboard)
-            killcounter.grid(row=0, column=0, sticky='nsew')
-            displaybar.rowconfigure(0, weight=1)
-            displaybar.columnconfigure(0, weight=1)
-            displaybar.grid(row=0, column=1, sticky='nsew')
-
-            chessboard.set_counter(killcounter)
+            if kill_counter:
+                displaybar = tk.Frame(window)
+                killcounter = KillCounter(displaybar, chessboard)
+                killcounter.grid(row=0, column=0, sticky='nsew')
+                displaybar.rowconfigure(0, weight=1)
+                displaybar.columnconfigure(0, weight=1)
+                displaybar.grid(row=0, column=1, sticky='nsew')
+    
+                chessboard.set_counter(killcounter)
 
         window.columnconfigure(0, weight=8)
         window.columnconfigure(1, weight=1)
