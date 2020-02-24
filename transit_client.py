@@ -3,10 +3,11 @@ import time
 import threading
 import queue
 
-local_port = 1234
 
+def transit(mode, server, remote_port, local_port=None, room=""):
+    if not local_port:
+        local_port = remote_port
 
-def transit(mode, server, port, room):
     if mode not in ["direct", "punch", "proxy"]:
         return None
 
@@ -14,21 +15,21 @@ def transit(mode, server, port, room):
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     s.bind(('', local_port))
-    s.connect((server, port))
+    s.connect((server, remote_port))
 
     if mode == "direct":
-        print(f"Connected to {server}:{port} with local port {local_port}")
+        print(f"Connected to {server}:{remote_port} with local port {local_port}")
         return s
     elif mode in ["punch", "proxy"]:
-        print(f"Requesting room {room} on {server}:{port} with local port {local_port}...")
+        print(f"Requesting room {room} on {server}:{remote_port} with local port {local_port}...")
 
         s.send(f"{mode},{room}".encode())
 
         if mode == "punch":
-            ip, port = s.recv(1024).decode().split(":")
-            port = int(port)
+            ip, remote_port = s.recv(1024).decode().split(":")
+            remote_port = int(remote_port)
 
-            addr = (ip, port)
+            addr = (ip, remote_port)
             print(f"Received forward to {addr}")
 
             c = punch(addr)
@@ -41,12 +42,12 @@ def transit(mode, server, port, room):
             return s
 
 
-def punch(addr):
+def punch(addr, local_port):
     q = queue.Queue()
     running = [True]
 
-    thread_listen = threading.Thread(target=lambda: listen(running, q))
-    thread_connect = threading.Thread(target=lambda: connect(addr, running, q))
+    thread_listen = threading.Thread(target=lambda: listen(running, q, local_port))
+    thread_connect = threading.Thread(target=lambda: connect(addr, running, q, local_port))
 
     print("Starting connecting and listening threads...")
     thread_listen.start()
@@ -62,7 +63,7 @@ def punch(addr):
     return conn
 
 
-def connect(addr, running, q):
+def connect(addr, running, local_port, q):
     with socket.socket() as connecting:
         connecting.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         connecting.bind(('', local_port))
@@ -79,7 +80,7 @@ def connect(addr, running, q):
                 time.sleep(1)
 
 
-def listen(running, q):
+def listen(running, local_port, q):
     with socket.socket() as listening:
         listening.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         listening.bind(('', local_port))

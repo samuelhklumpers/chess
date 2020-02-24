@@ -611,7 +611,7 @@ class Client:
             port = int(port)
 
             def connect():
-                self.conn = transit("direct" if room == "direct" else "proxy", server, port, room)
+                self.conn = transit("direct" if room == "direct" else "proxy", server, port, room=room)
                 self.negotiate_colour()
             window.after(1000, connect)
 
