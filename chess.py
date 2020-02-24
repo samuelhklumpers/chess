@@ -5,9 +5,11 @@ import tkinter as tk
 import numpy as np
 import itertools as itr
 
+from tkinter import font
 from pieces import *
 
 
+COLOURS = [Piece.BLACK, Piece.WHITE]
 
 TILE_BLACK = '#AF8521'
 TILE_WHITE = '#E2DA9C'
@@ -17,8 +19,10 @@ TILE_UNSEEN_WHITE = '#87825E'
 
 MEMORY_COLOUR = '#444444'
 
+REL_PIECE_SIZE = 0.75
+
 window = tk.Tk("chess")
-window.geometry("480x560")
+window.geometry("560x560")
 
 
 def grouper(iterable, n, fillvalue=None):
@@ -29,9 +33,7 @@ def grouper(iterable, n, fillvalue=None):
 
 
 class Tile:
-    def __init__(self, x, y, board, colours=None):
-        if colours is None:
-            colours = [Piece.BLACK, Piece.WHITE]
+    def __init__(self, x, y, board):
 
         self.x = x
         self.y = y
@@ -40,8 +42,8 @@ class Tile:
 
         self.piece = None
         self.do_memory = True
-        self.memory = {c: None for c in colours}
-        self.taken = {c: None for c in colours}
+        self.memory = {c: None for c in COLOURS}
+        self.taken = {c: None for c in COLOURS}
 
         p = (self.x + self.y + 1) % 2
         self.colour = "white" if p else "black"
@@ -102,6 +104,7 @@ class Tile:
             ret = None
 
             if self.piece:
+                self.board.take(self.piece)
                 ret = self.taken.setdefault(self.piece.colour, self.piece)
                 self.piece.delete()
 
@@ -151,17 +154,20 @@ class Tile:
 
 
 class Board(tk.Canvas):
-    def __init__(self, master, client, reinit=False):
+    def __init__(self, master, client, start_file, reinit=False):
         if not reinit:
             tk.Canvas.__init__(self, master=master)
             self.bind("<Expose>", self.draw)
             self.bind("<Button-1>", self._click)
+            self.bind("<Configure>", self.resize)
+            self.counter = None
         else:
             self.delete('all')
 
         self.client = client
 
         self.loaded = False
+        self.font = font.Font(family="Cambria", size=-80)
 
         self.pieces = {Piece.WHITE: [], Piece.BLACK: []}
         self.seen = {Piece.WHITE: set(), Piece.BLACK: set()}
@@ -174,10 +180,15 @@ class Board(tk.Canvas):
         self._e2 = None
         self.selection = None
 
-    def load(self, fn):
+        self.start_file = start_file
+
+    def load(self):
+        self.loaded = True
+        self.resize()
+
         constructors = {p.SHAPE: p for p in Piece.pieces}
 
-        with open(fn) as f:
+        with open(self.start_file) as f:
             text = f.read()
         text = "".join(text.split())
         lines = text.split(";")
@@ -210,9 +221,8 @@ class Board(tk.Canvas):
         return self.board[x, y] if self.is_in_bounds(x, y) else None
 
     def draw(self, event=None):
-        if not self.loaded and self.winfo_width() > 1:
-            self.load("starting_board.txt")
-            self.loaded = True
+        if not self.loaded:
+            self.load()
 
         dx = self.winfo_width() / 8
         dy = self.winfo_height() / 8
@@ -229,10 +239,28 @@ class Board(tk.Canvas):
 
         self.redraw()
 
+    def resize(self, event=None):
+        dx = self.winfo_width() / 8
+        dy = self.winfo_height() / 8
+
+        fontsize = -int(REL_PIECE_SIZE * min(dx, dy))
+        self.font.configure(size=fontsize)
+
+        for x in range(8):
+            for y in range(8):
+                piece = self.board[x, y].piece
+
+                self.board[x, y].place_on_screen(piece)
+
+                for mem_piece in self.board[x, y].memory.values():
+                    self.board[x, y].place_on_screen(mem_piece)
+
+        self.redraw()
+
     def create(self, p, x, y, colour=None):
         colour = p.colour if not colour else colour
 
-        return self.create_text(*self.screen_coord(x, y, True), anchor="w", font="Cambria", text=p.shape, fill=colour)
+        return self.create_text(*self.screen_coord(x, y, True), font=self.font, text=p.APPEARANCE, fill=colour)
 
     def set_state(self, colour, state):
         for t in self.board.flat:
@@ -283,7 +311,7 @@ class Board(tk.Canvas):
             p = self.board[x, y].piece
 
             if p and p.colour == self.turn:
-                self.selection = self.create_text((x + 0.5) * dx, (y + 0.5) * dy, anchor="w", font="Cambria", text=p.shape, fill="red")
+                self.selection = self.create_text((x + 0.5) * dx, (y + 0.5) * dy, font=self.font, text=p.APPEARANCE, fill="red")
                 self.redraw()
                 self.tag_raise(self.selection)
             else:
@@ -308,8 +336,12 @@ class Board(tk.Canvas):
 
     def play(self, moves, speed=2.0, replay=False):
         if replay:
-            self.__init__(self.master, client=self.client, reinit=True)
-            self.load("starting_board.txt")
+            self.__init__(self.master, client=self.client, start_file=self.start_file, reinit=True)
+            self.load()
+
+            if self.counter:
+                self.counter.reset()
+
             self.turn = Piece.WHITE
 
             for t in self.board.flat:
@@ -418,10 +450,17 @@ class Board(tk.Canvas):
             self.set_state(Piece.BLACK, "normal")
             self.set_state(Piece.WHITE, "normal")
 
+    def take(self, piece):
+        if self.counter:
+            self.counter.increment(piece)
+
+    def set_counter(self, counter):
+        self.counter = counter
+
 
 class TurnButton(tk.Button):
     def __init__(self, master, board):
-        self.text = tk.StringVar("")
+        self.text = tk.StringVar()
 
         tk.Button.__init__(self, master, command=self.start_turn, textvariable=self.text)
         self.board = board
@@ -439,8 +478,81 @@ class TurnButton(tk.Button):
             self.board.play(self.board.history, replay=True)
 
 
+class KillCounter(tk.Frame):
+
+    class NumStringVar():
+        def __init__(self, stringvar):
+            self.i = 0
+            self.s = stringvar
+
+        def set(self, n):
+            self.i = n
+
+        def add(self, n):
+            self.i += n
+            self.update()
+
+        def update(self):
+            self.s.set(str(self.i))
+
+    def __init__(self, master, board, mode="remaining"):
+        tk.Frame.__init__(self, master)
+
+        self.board = board
+        self.mode = mode
+        self.counter = {clr: {piece: KillCounter.NumStringVar(tk.StringVar()) \
+                              for piece in Piece.pieces} for clr in COLOURS}
+
+        if self.mode == "remaining":
+            ...
+        elif self.mode == "taken":
+            ...
+        else:
+            raise ValueError(f"Incorrect mode keyword: {self.mode}")
+
+        piece_num = len(Piece.pieces)
+
+        for i, clr in enumerate(COLOURS):
+            clr_label = tk.Label(self, text=clr.title())
+            clr_label.grid(row=(piece_num + 2) * i, column=0, columnspan=2)
+
+            for j, piece in enumerate(Piece.pieces):
+                piece_label = tk.Label(self, text=piece.APPEARANCE)
+                piece_label.grid(row=(piece_num + 2) * i + j + 1, column=0)
+
+                count_label = tk.Label(self, textvariable=self.counter[clr][piece].s)
+                count_label.grid(row=(piece_num + 2) * i + j + 1, column=1)
+
+        self.rowconfigure(piece_num + 1, weight=1)
+
+        self.reset()
+
+    def reset(self):
+        for clr in COLOURS:
+            for piece in Piece.pieces:
+                self.counter[clr][piece].set(0)
+
+        if self.mode == "remaining":
+            for tile in self.board.board.flat:
+                if tile.piece:
+                    p = tile.piece
+                    self.counter[p.colour][p.__class__].add(1)
+
+        for clr in COLOURS:
+            for piece in Piece.pieces:
+                self.counter[clr][piece].update()
+
+    def increment(self, piece):
+        incr = -1 if self.mode == "remaining" else 1
+        clr = piece.colour
+        p = piece.__class__
+
+        self.counter[clr][p].add(incr)
+        self.counter[clr][p].update()
+
+
 class Client:
-    def __init__(self, client_mode="local"):
+    def __init__(self, client_mode="local", kill_counter=True):
         self.client_mode = client_mode
 
         if client_mode == "online":
@@ -466,7 +578,8 @@ class Client:
                 exit()
 
         playfield = tk.Frame(window)
-        chessboard = Board(playfield, client=self)
+        chessboard = Board(playfield, client=self, start_file='starting_board_only_kings.txt')
+        chessboard.load()
 
         chessboard.grid(row=0, column=0, sticky='nsew')
         playfield.rowconfigure(0, weight=1)
@@ -480,9 +593,20 @@ class Client:
             turnbutton.grid(row=0, column=0, sticky='nsew')
             controlbar.rowconfigure(0, weight=1)
             controlbar.columnconfigure(0, weight=1)
-            controlbar.grid(row=1, column=0, sticky='nsew')
+            controlbar.grid(row=1, column=0, columnspan=2, sticky='nsew')
 
-        window.columnconfigure(0, weight=1)
+            if kill_counter:
+                displaybar = tk.Frame(window)
+                killcounter = KillCounter(displaybar, chessboard)
+                killcounter.grid(row=0, column=0, sticky='nsew')
+                displaybar.rowconfigure(0, weight=1)
+                displaybar.columnconfigure(0, weight=1)
+                displaybar.grid(row=0, column=1, sticky='nsew')
+    
+                chessboard.set_counter(killcounter)
+
+        window.columnconfigure(0, weight=8)
+        window.columnconfigure(1, weight=1)
         window.rowconfigure(0, weight=8)
         window.rowconfigure(1, weight=1)
 

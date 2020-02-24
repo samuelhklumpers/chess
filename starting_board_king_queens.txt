@@ -1,0 +1,2 @@
+black:Ke8,Da8b8c8d8f8g8h8a7b7c7d7e7f7g7h7;
+white:Ke1,Da1b1c1d1f1g1h1a2b2c2d2e2f2g2h2;

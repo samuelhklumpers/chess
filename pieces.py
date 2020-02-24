@@ -56,6 +56,7 @@ class BoardWalk(PathIter):
 
 class Piece(ABC):
     SHAPE = "*"
+    APPEARANCE = "*"
     VALUE = 0
 
     WHITE = "white"
@@ -99,12 +100,6 @@ class Piece(ABC):
     def moves(self, tile):
         ...
 
-#    def __eq__(self, other):
-#         if not other:
-#             return False
-# 
-#         return self.colour == other.colour and self.shape == other.shape
-
     def __hash__(self):
         return self.hash
 
@@ -139,6 +134,7 @@ class Piece(ABC):
 
 class Pawn(Piece):
     SHAPE = "p"
+    APPEARANCE = u"\u2659"
     VALUE = 0
 
     def __init__(self, board, colour, colour_override=None):
@@ -167,11 +163,11 @@ class Pawn(Piece):
             yield self, (tile.x, tile.y + self.dy)
 
         t = tile.offset(1, self.dy)
-        if t:
+        if t and t.piece:
             yield self, (tile.x + 1, tile.y + self.dy)
 
         t = tile.offset(-1, self.dy)
-        if t:
+        if t and t.piece:
             yield self, (tile.x - 1, tile.y + self.dy)
 
     def copy(self, colour_override=None):
@@ -183,6 +179,7 @@ class Pawn(Piece):
 
 class Bishop(Piece):
     SHAPE = "L"
+    APPEARANCE = u"\u2657"
     VALUE = 3
 
     DIRS = {-1: {-1: BoardWalk([-1, -1]), 1: BoardWalk([-1, 1])}, 1: {-1: BoardWalk([1, -1]), 1: BoardWalk([1, 1])}}
@@ -216,6 +213,7 @@ class Bishop(Piece):
 
 class Knight(Piece):
     SHAPE = "P"
+    APPEARANCE = u"\u2658"
     VALUE = 3
 
     def __init__(self, board, colour, colour_override=None):
@@ -240,6 +238,7 @@ class Knight(Piece):
 
 class Rook(Piece):
     SHAPE = "T"
+    APPEARANCE = u"\u2656"
     VALUE = 5
 
     DIRS = {0: {-1: BoardWalk([-1, 0]), 1: BoardWalk([1, 0])}, 1: {-1: BoardWalk([0, -1]), 1: BoardWalk([0, 1])}}  # TODO rooks never walk?
@@ -275,6 +274,7 @@ class Rook(Piece):
 
 class Queen(Bishop, Rook):
     SHAPE = "D"
+    APPEARANCE = u"\u2655"
     VALUE = 10
 
     def __init__(self, board, colour, colour_override=None):
@@ -300,6 +300,7 @@ class Queen(Bishop, Rook):
 
 class King(Piece):
     SHAPE = "K"
+    APPEARANCE = u"\u2654"
     VALUE = 0
 
     def __init__(self, board, colour, colour_override=None):
