@@ -663,6 +663,9 @@ class Client:
         if self.client_mode == "online":
             self.conn.close()
 
+            with self.waiting:
+                self.waiting.notify()
+
     def move(self, move_str):
         if self.client_mode == "online":
             self.conn.send(move_str.encode())
@@ -677,7 +680,9 @@ class Client:
                 self.board.read_move(msg.decode())
                 self.redraw()
                 self.board.turn = self.colour
-                self.waiting.wait()
+
+                if self.running:
+                    self.waiting.wait()
 
 
 c = Client(client_mode="online")
