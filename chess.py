@@ -424,9 +424,8 @@ class Board(tk.Canvas):
                 if send:
                     self.client.move(move_str)
                     self.turn = "wait"
-                    self.client.end_turn()
 
-                self.win()
+                self.client.end_turn()
 
     def win(self):
         white = sum(p.shape == "K" for p in self.pieces[Piece.WHITE])
@@ -452,7 +451,7 @@ class Board(tk.Canvas):
 
             self.set_state(Piece.BLACK, "normal")
             self.set_state(Piece.WHITE, "normal")
-            
+
             self.client.end_game()
 
     def take(self, piece):
@@ -564,7 +563,7 @@ class Client:
         self.conn = None
 
         playfield = tk.Frame(window)
-        chessboard = Board(playfield, client=self, start_file='starting_board.txt')
+        chessboard = Board(playfield, client=self, start_file='starting_board_only_kings.txt')
         chessboard.load()
 
         chessboard.grid(row=0, column=0, sticky='nsew')
@@ -644,6 +643,8 @@ class Client:
         self.board.redraw(colour=self.colour)
 
     def end_turn(self):
+        self.board.win()
+
         if not self.running:
             return
 
