@@ -266,9 +266,9 @@ class Board(tk.Canvas):
     def set_state(self, colour, state):
         for t in self.board.flat:
             t.set_state(colour, state)
-
-    def redraw(self, event=None):
-        turn = self.turn
+            
+    def redraw(self, event=None, colour=None):
+        turn = self.turn if not colour else colour
 
         if turn == "wait":
             self.set_state(Piece.BLACK, "hidden")
