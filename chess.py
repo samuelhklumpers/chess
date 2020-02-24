@@ -452,6 +452,8 @@ class Board(tk.Canvas):
 
             self.set_state(Piece.BLACK, "normal")
             self.set_state(Piece.WHITE, "normal")
+            
+            self.client.end_game()
 
     def take(self, piece):
         if self.counter:
