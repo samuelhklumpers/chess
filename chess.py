@@ -426,7 +426,6 @@ class Board(tk.Canvas):
                     self.turn = "wait"
                     self.client.end_turn()
 
-                self.redraw()
                 self.win()
 
     def win(self):
