@@ -43,7 +43,7 @@ class Tile:
 
         self.piece = None
         self.do_memory = True
-        
+
         self.memory = {c: None for c in COLOURS}
         self.taken = {c: None for c in COLOURS}
 
@@ -266,7 +266,7 @@ class Board(tk.Canvas):
     def set_state(self, colour, state):
         for t in self.board.flat:
             t.set_state(colour, state)
-            
+
     def redraw(self, event=None, colour=None):
         turn = self.turn if not colour else colour
 
@@ -580,15 +580,15 @@ class Client:
             controlbar.columnconfigure(0, weight=1)
             controlbar.grid(row=1, column=0, columnspan=2, sticky='nsew')
 
-            if kill_counter:
-                displaybar = tk.Frame(window)
-                killcounter = KillCounter(displaybar, chessboard)
-                killcounter.grid(row=0, column=0, sticky='nsew')
-                displaybar.rowconfigure(0, weight=1)
-                displaybar.columnconfigure(0, weight=1)
-                displaybar.grid(row=0, column=1, sticky='nsew')
-    
-                chessboard.set_counter(killcounter)
+        if kill_counter:
+            displaybar = tk.Frame(window)
+            killcounter = KillCounter(displaybar, chessboard)
+            killcounter.grid(row=0, column=0, sticky='nsew')
+            displaybar.rowconfigure(0, weight=1)
+            displaybar.columnconfigure(0, weight=1)
+            displaybar.grid(row=0, column=1, sticky='nsew')
+
+            chessboard.set_counter(killcounter)
 
         window.columnconfigure(0, weight=8)
         window.columnconfigure(1, weight=1)
