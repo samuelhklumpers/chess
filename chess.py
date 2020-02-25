@@ -563,7 +563,7 @@ class Client:
         self.conn = None
 
         playfield = tk.Frame(window)
-        chessboard = Board(playfield, client=self, start_file='starting_board_only_kings.txt')
+        chessboard = Board(playfield, client=self, start_file='starting_board.txt')
         chessboard.load()
 
         chessboard.grid(row=0, column=0, sticky='nsew')
