@@ -615,6 +615,11 @@ class Client:
                 self.negotiate_colour()
             window.after(1000, connect)
 
+        if client_mode != "replay":
+            window.mainloop()
+
+    def replay(self, moves):
+        window.after(500, lambda: self.board.play(moves, replay=True))
         window.mainloop()
 
     def negotiate_colour(self):
@@ -686,3 +691,4 @@ class Client:
 
 
 c = Client(client_mode="online")
+#c.replay(['e3e4', 'e5e4', 'd4e4', 'd5e4'])
