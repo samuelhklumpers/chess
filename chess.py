@@ -1,12 +1,14 @@
 import socket
 import time
+import threading
 
 import tkinter as tk
 import numpy as np
 import itertools as itr
 
-from tkinter import font
 from pieces import *
+from tkinter import font
+from transit_client import transit
 
 
 COLOURS = [Piece.BLACK, Piece.WHITE]
@@ -34,7 +36,6 @@ def grouper(iterable, n, fillvalue=None):
 
 class Tile:
     def __init__(self, x, y, board):
-
         self.x = x
         self.y = y
         self.board = board
@@ -42,6 +43,7 @@ class Tile:
 
         self.piece = None
         self.do_memory = True
+
         self.memory = {c: None for c in COLOURS}
         self.taken = {c: None for c in COLOURS}
 
@@ -90,7 +92,6 @@ class Tile:
         return self.piece, (self.x + dx, self.y + dy)
 
     def move(self, piece: Piece, is_last=False):
-
         """
         Try to move to and take on this tile if is_last,
         else try to move through it.
@@ -266,8 +267,8 @@ class Board(tk.Canvas):
         for t in self.board.flat:
             t.set_state(colour, state)
 
-    def redraw(self, event=None):
-        turn = self.turn
+    def redraw(self, event=None, colour=None):
+        turn = self.turn if not colour else colour
 
         if turn == "wait":
             self.set_state(Piece.BLACK, "hidden")
@@ -386,6 +387,7 @@ class Board(tk.Canvas):
             self.vision(Piece.BLACK)
             self.vision(Piece.WHITE)
 
+        self.history = moves
         self.win()
 
     def read_move(self, move):
@@ -395,9 +397,9 @@ class Board(tk.Canvas):
         x1, x2 = ord(x1) - a, ord(x2) - a
         y1, y2 = 8 - int(y1), 8 - int(y2)
 
-        self.do_move(x1, y1, x2, y2)
+        self.do_move(x1, y1, x2, y2, send=False)
 
-    def do_move(self, x1, y1, x2, y2):
+    def do_move(self, x1, y1, x2, y2, send=True):
         if x1 == x2 and y1 == y2:
             return
 
@@ -417,13 +419,13 @@ class Board(tk.Canvas):
             if np.array_equal(m, end):
                 tile.piece.transfer(tile, self.board[x2, y2])
 
-                self.history += [f"{chr(ord('a') + x1)}{8 - y1}{chr(ord('a') + x2)}{8 - y2}"]
+                move_str = f"{chr(ord('a') + x1)}{8 - y1}{chr(ord('a') + x2)}{8 - y2}"
+                self.history += [move_str]
+                if send:
+                    self.client.move(move_str)
+                    self.turn = "wait"
 
-                self.turn = "wait"
                 self.client.end_turn()
-
-        self.redraw()
-        self.win()
 
     def win(self):
         white = sum(p.shape == "K" for p in self.pieces[Piece.WHITE])
@@ -449,6 +451,8 @@ class Board(tk.Canvas):
 
             self.set_state(Piece.BLACK, "normal")
             self.set_state(Piece.WHITE, "normal")
+
+            self.client.end_game()
 
     def take(self, piece):
         if self.counter:
@@ -479,7 +483,6 @@ class TurnButton(tk.Button):
 
 
 class KillCounter(tk.Frame):
-
     class NumStringVar():
         def __init__(self, stringvar):
             self.i = 0
@@ -554,31 +557,13 @@ class KillCounter(tk.Frame):
 class Client:
     def __init__(self, client_mode="local", kill_counter=True):
         self.client_mode = client_mode
-
-        if client_mode == "online":
-            mode = input("Mode (host/client): ")
-            if mode.lower() == "host":
-                offset = input("Port offset: ")
-                offset = int(offset)
-
-                s = socket.socket()
-                s.bind(('', 60000 + offset))
-                s.listen(1)
-
-                conn, addr = s.accept()
-            elif mode.lower() == "client":
-                host = input("Host address: ")
-                offset = input("Port offset: ")
-                offset = int(offset)
-
-                s = socket.socket()
-                s.connect((host, 60000 + offset))
-                conn = s
-            else:
-                exit()
+        self.running = True
+        self.waiting = threading.Condition()
+        self.colour = None
+        self.conn = None
 
         playfield = tk.Frame(window)
-        chessboard = Board(playfield, client=self, start_file='starting_board_only_kings.txt')
+        chessboard = Board(playfield, client=self, start_file='starting_board.txt')
         chessboard.load()
 
         chessboard.grid(row=0, column=0, sticky='nsew')
@@ -595,28 +580,115 @@ class Client:
             controlbar.columnconfigure(0, weight=1)
             controlbar.grid(row=1, column=0, columnspan=2, sticky='nsew')
 
-            if kill_counter:
-                displaybar = tk.Frame(window)
-                killcounter = KillCounter(displaybar, chessboard)
-                killcounter.grid(row=0, column=0, sticky='nsew')
-                displaybar.rowconfigure(0, weight=1)
-                displaybar.columnconfigure(0, weight=1)
-                displaybar.grid(row=0, column=1, sticky='nsew')
-    
-                chessboard.set_counter(killcounter)
+        if kill_counter:
+            displaybar = tk.Frame(window)
+            killcounter = KillCounter(displaybar, chessboard)
+            killcounter.grid(row=0, column=0, sticky='nsew')
+            displaybar.rowconfigure(0, weight=1)
+            displaybar.columnconfigure(0, weight=1)
+            displaybar.grid(row=0, column=1, sticky='nsew')
+
+            chessboard.set_counter(killcounter)
 
         window.columnconfigure(0, weight=8)
         window.columnconfigure(1, weight=1)
         window.rowconfigure(0, weight=8)
         window.rowconfigure(1, weight=1)
 
+
+
+        window.columnconfigure(0, weight=1)
+        window.rowconfigure(0, weight=8)
+        window.rowconfigure(1, weight=1)
+
+        self.board = chessboard
+
+        if client_mode == "online":
+            server = input("Server ip: ")
+            port = input("Port: ")
+            room = input("Room (enter 'direct' to connect without intermediate server): ")
+
+            port = int(port)
+
+            def connect():
+                self.conn = transit("direct" if room == "direct" else "proxy", server, port, room=room)
+                self.negotiate_colour()
+            window.after(1000, connect)
+
+        if client_mode != "replay":
+            window.mainloop()
+
+    def replay(self, moves):
+        window.after(500, lambda: self.board.play(moves, replay=True))
         window.mainloop()
 
-    def end_turn(self):
-        if self.client_mode == "local":
-            ...
+    def negotiate_colour(self):
+        roll = int(np.random.rand() * 1e6)
+
+        self.conn.send(str(roll).encode())
+        other_roll = int(self.conn.recv(1024).decode())
+
+        self.conn_thread = threading.Thread(target=self.conn_func)
+        self.conn_thread.start()
+
+        if roll > other_roll:
+            self.colour = Piece.WHITE
+            self.board.turn = self.colour
         else:
-            ...  # poll conn
+            self.colour = Piece.BLACK
+            self.board.turn = self.colour
+            self.board.turn = "wait"
+
+            with self.waiting:
+                self.waiting.notify()
+
+        self.redraw()
+
+    def redraw(self):
+        self.board.redraw(colour=self.colour)
+
+    def end_turn(self):
+        self.board.win()
+
+        if not self.running:
+            return
+
+        if self.client_mode == "local":
+            self.board.redraw()
+        else:
+            self.redraw()
+            with self.waiting:
+                self.waiting.notify()
+
+    def end_game(self):
+        self.running = False
+
+        print(self.board.history)
+
+        if self.client_mode == "online":
+            self.conn.close()
+
+            with self.waiting:
+                self.waiting.notify()
+
+    def move(self, move_str):
+        if self.client_mode == "online":
+            self.conn.send(move_str.encode())
+
+    def conn_func(self):
+        with self.waiting:
+            self.waiting.wait()
+            while self.running:
+                msg = self.conn.recv(1024)
+                self.board.set_state(Piece.BLACK, "hidden")
+                self.board.set_state(Piece.WHITE, "hidden")
+                self.board.read_move(msg.decode())
+                self.redraw()
+                self.board.turn = self.colour
+
+                if self.running:
+                    self.waiting.wait()
 
 
-c = Client(client_mode="local")
+c = Client(client_mode="online")
+#c.replay(['e3e4', 'e5e4', 'd4e4', 'd5e4'])
